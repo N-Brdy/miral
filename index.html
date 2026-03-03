@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rapport TP – Fréquence Cardiaque & Ventilation</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    /* ─── Variables ─────────────────────────────────────────────── */
+    :root {
+      --bg: #f5f3ee;
+      --surface: #ffffff;
+      --surface-alt: #faf9f6;
+      --border: #e8e4dc;
+      --text: #1a1815;
+      --text-muted: #6b6560;
+      --accent: #c1440e;
+      --accent-light: #fdf0eb;
+
+      --red:    #e63946;
+      --green:  #2a9d8f;
+      --blue:   #1d4e89;
+      --purple: #9b5de5;
+
+      --shadow: 0 2px 12px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.05);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.06);
+      --radius: 14px;
+    }
+
+    /* ─── Reset ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.65;
+    }
+
+    /* ─── Layout ─────────────────────────────────────────────────── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ─── Header ─────────────────────────────────────────────────── */
+    header {
+      background: var(--text);
+      color: #fff;
+      padding: 56px 0 48px;
+      margin-bottom: 48px;
+    }
+
+    header .container {
+      padding-bottom: 0;
+    }
+
+    .header-label {
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.5);
+      margin-bottom: 12px;
+    }
+
+    header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      line-height: 1.15;
+      margin-bottom: 28px;
+    }
+
+    header h1 em {
+      font-style: italic;
+      color: #f4a26a;
+    }
+
+    .meta-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px 40px;
+      margin-top: 8px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .meta-item span:first-child {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.45);
+    }
+
+    .meta-item span:last-child {
+      font-size: .95rem;
+      color: rgba(255,255,255,.9);
+    }
+
+    /* ─── Section titles ─────────────────────────────────────────── */
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .section-heading .num {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .section-heading h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.45rem;
+    }
+
+    /* ─── Card ───────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+
+    /* ─── Objectif ───────────────────────────────────────────────── */
+    .objectif-text {
+      font-size: .95rem;
+      color: var(--text-muted);
+      padding: 16px 20px;
+      background: var(--surface-alt);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* ─── Chart wrapper ──────────────────────────────────────────── */
+    .chart-wrap {
+      position: relative;
+      height: 380px;
+    }
+
+    /* ─── Legend chips ───────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .legend-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: .8rem;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ─── Data table ─────────────────────────────────────────────── */
+    .data-table-wrap {
+      margin-top: 28px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .data-table-title {
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 16px;
+      background: var(--surface-alt);
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .85rem;
+    }
+    .data-table thead th {
+      background: var(--surface-alt);
+      text-align: center;
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 10px 12px;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    .data-table thead th:first-child { text-align: left; }
+    .data-table small { display:block; font-weight:400; font-size:.68rem; color:#aaa; margin-top:2px; }
+    .data-table tbody tr:nth-child(even) { background: var(--surface-alt); }
+    .data-table tbody tr:hover { background: #f0ede6; }
+    .data-table td { padding: 9px 12px; text-align: center; border-bottom: 1px solid var(--border); color: var(--text); }
+    .data-table td:first-child { text-align: left; font-weight: 600; white-space: nowrap; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table .cell-high { background: #fff3cd; font-weight: 700; border-radius: 4px; }
+
+    /* ─── Edit zone ──────────────────────────────────────────────── */
+    .btn-teacher {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-family: inherit;
+      font-size: .8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .btn-teacher:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .edit-zone {
+      margin-top: 24px;
+      display: none;
+    }
+
+    .edit-zone.active { display: block; }
+
+    .edit-title {
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    .edit-table-wrap { overflow-x: auto; }
+
+    .edit-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+    }
+
+    .edit-table th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: .72rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 6px 8px 10px;
+      white-space: nowrap;
+    }
+
+    .edit-table td { padding: 4px 6px; }
+
+    .edit-table .row-label {
+      font-weight: 500;
+      white-space: nowrap;
+      padding-right: 12px;
+    }
+
+    .edit-table input[type="number"] {
+      width: 72px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: .82rem;
+      background: var(--surface-alt);
+      color: var(--text);
+      transition: border-color .2s;
+    }
+
+    .edit-table input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn-update {
+      margin-top: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-family: inherit;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+
+    .btn-update:hover { opacity: .88; }
+    .btn-update:active { transform: scale(.98); }
+
+    /* ─── Modal ──────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      padding: 32px 28px;
+      width: min(380px, 90vw);
+      transform: translateY(16px);
+      transition: transform .25s;
+    }
+
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal h3 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.2rem;
+      margin-bottom: 6px;
+    }
+
+    .modal p {
+      font-size: .85rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+
+    .modal input[type="password"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .9rem;
+      margin-bottom: 14px;
+      background: var(--surface-alt);
+      color: var(--text);
+      transition: border-color .2s;
+    }
+
+    .modal input[type="password"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .modal-error {
+      font-size: .8rem;
+      color: var(--red);
+      min-height: 18px;
+      margin-bottom: 10px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-cancel {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-family: inherit;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+
+    .btn-cancel:hover { border-color: var(--text-muted); }
+
+    .btn-confirm {
+      background: var(--text);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-family: inherit;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    .btn-confirm:hover { opacity: .82; }
+
+    /* ─── Observations ───────────────────────────────────────────── */
+    .obs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .obs-card {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .obs-card .who {
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .obs-card .activity {
+      font-size: .82rem;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .obs-card .quote {
+      font-size: .9rem;
+      font-style: italic;
+      color: var(--text);
+      border-left: 2px solid currentColor;
+      padding-left: 10px;
+    }
+
+    .obs-card.aaron { --c: var(--red); }
+    .obs-card.noe   { --c: var(--blue); }
+
+    .obs-card .who { color: var(--c); }
+    .obs-card .quote { border-color: var(--c); }
+
+    /* ─── Conclusion ─────────────────────────────────────────────── */
+    .conclusion p {
+      font-size: .95rem;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+
+    .conclusion p:last-child { margin-bottom: 0; }
+
+    .highlight-box {
+      background: var(--accent-light);
+      border: 1px solid #f4c4a8;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: .9rem;
+    }
+
+    .highlight-box strong { color: var(--accent); }
+
+    /* ─── Footer ─────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      font-size: .78rem;
+      color: var(--text-muted);
+      padding: 24px;
+      border-top: 1px solid var(--border);
+      margin-top: 16px;
+    }
+
+    /* ─── Animations ─────────────────────────────────────────────── */
+    .card {
+      animation: fadeUp .4s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card:nth-child(2) { animation-delay: .07s; }
+    .card:nth-child(3) { animation-delay: .14s; }
+    .card:nth-child(4) { animation-delay: .21s; }
+  </style>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  EN-TÊTE                                                      ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<header>
+  <div class="container">
+    <p class="header-label">Travaux Pratiques · Sciences · 10VP4</p>
+    <h1>Rapport TP – <em>Fréquence Cardiaque</em><br>& Ventilation</h1>
+    <div class="meta-grid">
+      <div class="meta-item">
+        <span>Élèves</span>
+        <span>Aaron &amp; Burdy Noé</span>
+      </div>
+      <div class="meta-item">
+        <span>Classe</span>
+        <span>10VP4</span>
+      </div>
+      <div class="meta-item">
+        <span>Date</span>
+        <span>11 Février 2026</span>
+      </div>
+      <div class="meta-item">
+        <span>Niveau</span>
+        <span>10H</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ╔══════════════════════════════════════════════════════════════╗ -->
+  <!-- ║  OBJECTIF                                                     ║ -->
+  <!-- ╚══════════════════════════════════════════════════════════════╝ -->
+  <div class="card">
+    <div class="section-heading">
+      <span class="num">0</span>
+      <h2>Objectif du TP</h2>
+    </div>
+    <p class="objectif-text">
+      Le but de ce TP c'était de voir ce qui se passe dans notre corps quand on fait du sport. Plus précisément, on voulait regarder comment notre fréquence cardiaque et notre respiration changent quand on fait des efforts, et après quand on se repose. On a aussi dû noter les résultats et les mettre dans un graphique.
+    </p>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════╗ -->
+  <!-- ║  GRAPHIQUE                                                    ║ -->
+  <!-- ╚══════════════════════════════════════════════════════════════╝ -->
+  <div class="card">
+    <div class="section-heading">
+      <span class="num">1</span>
+      <h2>Évolution de la Fréquence Cardiaque</h2>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="mainChart"></canvas>
+    </div>
+
+    <!-- Légende personnalisée -->
+    <div class="legend">
+      <div class="legend-chip"><div class="legend-dot" style="background:var(--red)"></div> Aaron – Corde à sauter</div>
+      <div class="legend-chip"><div class="legend-dot" style="background:var(--green)"></div> Aaron – Burpees</div>
+      <div class="legend-chip"><div class="legend-dot" style="background:var(--blue)"></div> Noé – Corde à sauter</div>
+      <div class="legend-chip"><div class="legend-dot" style="background:var(--purple)"></div> Noé – Burpees</div>
+    </div>
+
+    <!-- Tableau des données -->
+    <div class="data-table-wrap">
+      <p class="data-table-title">📋 Données mesurées (BPM)</p>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="dataTable">
+          <thead>
+            <tr>
+              <th>Élève / Exercice</th>
+              <th>1. Repos</th>
+              <th>2. Effort 1<br><small>(Corde 60s / Burpees 30s)</small></th>
+              <th>3. Repos<br><small>(2 min)</small></th>
+              <th>4. Effort 2<br><small>(Corde 90s / Burpees 60s)</small></th>
+              <th>5. Repos<br><small>(2 min)</small></th>
+              <th>6. Retour<br><small>en classe</small></th>
+            </tr>
+          </thead>
+          <tbody id="dataBody">
+            <!-- rempli par JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bouton Espace Professeur -->
+    <button class="btn-teacher" id="btnTeacher">
+      🔒 Espace Professeur
+    </button>
+
+    <!-- Zone d'édition (cachée par défaut) -->
+    <div class="edit-zone" id="editZone">
+      <p class="edit-title">Modifier les données (BPM)</p>
+      <div class="edit-table-wrap">
+        <table class="edit-table" id="editTable">
+          <thead>
+            <tr>
+              <th>Élève / Exercice</th>
+              <th>1. Repos</th>
+              <th>2. Effort 1</th>
+              <th>3. Repos 2'</th>
+              <th>4. Effort 2</th>
+              <th>5. Repos 2'</th>
+              <th>6. Retour</th>
+            </tr>
+          </thead>
+          <tbody id="editBody">
+            <!-- rempli par JS -->
+          </tbody>
+        </table>
+      </div>
+      <button class="btn-update" id="btnUpdate">↺ Mettre à jour le graphique</button>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════╗ -->
+  <!-- ║  OBSERVATIONS                                                 ║ -->
+  <!-- ╚══════════════════════════════════════════════════════════════╝ -->
+  <div class="card">
+    <div class="section-heading">
+      <span class="num">2</span>
+      <h2>Observations des Élèves</h2>
+    </div>
+    <div class="obs-grid">
+      <div class="obs-card aaron">
+        <p class="who">Aaron</p>
+        <p class="activity">Corde à sauter</p>
+        <p class="quote">Quand je sautais à la corde j'avais du mal à respirer normalement, ma respiration était forte et pas régulière du tout.</p>
+      </div>
+      <div class="obs-card aaron">
+        <p class="who">Aaron</p>
+        <p class="activity">Burpees</p>
+        <p class="quote">Après les burpees c'était pareil, je respirais très fort et de façon irrégulière. C'était encore plus dur que la corde je trouve.</p>
+      </div>
+      <div class="obs-card noe">
+        <p class="who">Noé</p>
+        <p class="activity">Corde à sauter</p>
+        <p class="quote">J'ai remarqué que plus je faisais de la corde longtemps, plus ma respiration s'accelérait. Au bout d'un moment j'avais vraiment du mal à reprendre mon souffle.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════╗ -->
+  <!-- ║  ANALYSE & CONCLUSION                                         ║ -->
+  <!-- ╚══════════════════════════════════════════════════════════════╝ -->
+  <div class="card conclusion">
+    <div class="section-heading">
+      <span class="num">3</span>
+      <h2>Analyse &amp; Conclusion Scientifique</h2>
+    </div>
+
+    <p>
+      Grâce à ce TP on a pu voir clairement que <strong>plus on fait un effort physique intense et long, plus notre fréquence cardiaque augmente.</strong> Par exemple pour Noé, la fréquence cardiaque est montée jusqu'à 208 BPM pendant l'Effort 2 à la corde, alors qu'au repos elle était à 104 BPM. C'est presque le double ! On voit aussi que le deuxième effort (plus long) donne des chiffres encore plus élevés que le premier.
+    </p>
+
+    <div class="highlight-box">
+      <strong>Pourquoi le corps fait ça ?</strong> Quand on fait du sport, nos muscles ont besoin de beaucoup plus d'énergie que d'habitude. Pour fabriquer cette énergie, ils ont besoin de dioxygène (O₂) et de nutriments. En échange, ils rejettent du dioxyde de carbone (CO₂) qu'il faut éliminer rapidement.
+    </div>
+
+    <p>
+      <strong>Le rôle de la respiration :</strong> Pour fournir plus d'O₂ au sang et évacuer le CO₂, notre corps respire beaucoup plus vite. L'air est renouvelé plus souvent dans les poumons (dans les alvéoles pulmonaires). C'est pour ça qu'on était essoufflés pendant les exercices — notre corps faisait de son mieux pour suivre la demande.
+    </p>
+
+    <p>
+      <strong>Le rôle du cœur :</strong> En même temps, le cœur bat plus vite (c'est ce qu'on voit sur le graphique avec les BPM qui montent). Ça permet au sang de transporter l'O₂ plus rapidement vers les muscles, et de ramener le CO₂ vers les poumons pour qu'il soit expulsé quand on expire.
+    </p>
+
+    <p>
+      <strong>Le retour au calme :</strong> Après l'effort, on voit que les courbes redescendent pendant les phases de repos. Le corps revient à la normale petit à petit — les professeurs appellent ça l'homéostasie. Ça veut dire que le corps est capable de retrouver son équilibre tout seul. Sur notre graphique, chaque phase de repos montre bien cette baisse des BPM.
+    </p>
+
+    <p>
+      Pour conclure, ce TP nous a montré que le cœur et les poumons travaillent ensemble quand on fait du sport. Plus l'effort est intense, plus ils doivent s'adapter. C'était intéressant de le voir directement avec nos propres données.
+    </p>
+  </div>
+
+</div><!-- /container -->
+
+<footer>
+  Rapport de TP réalisé par Aaron &amp; Burdy Noé · Classe 10VP4 · 11 Février 2026
+</footer>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  MODAL MOT DE PASSE                                           ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>🔒 Espace Professeur</h3>
+    <p>Saisissez le code d'accès pour modifier les données du graphique.</p>
+    <input type="password" id="pwdInput" placeholder="Code d'accès" autocomplete="off" />
+    <p class="modal-error" id="modalError"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnCancel">Annuler</button>
+      <button class="btn-confirm" id="btnConfirm">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  JAVASCRIPT                                                   ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<script>
+/* ─── Données initiales ─────────────────────────────────────────── */
+const LABELS = [
+  "1. Repos",
+  "2. Effort 1\n(Corde 60s / Burpees 30s)",
+  "3. Repos\n(2 min)",
+  "4. Effort 2\n(Corde 90s / Burpees 60s)",
+  "5. Repos\n(2 min)",
+  "6. Retour\nen classe"
+];
+
+const SERIES = [
+  { label: "Aaron – Corde à sauter", color: "#e63946", data: [106, 174, 100, 170, 100, 100] },
+  { label: "Aaron – Burpees",        color: "#2a9d8f", data: [110, 166, 114, 170, 116, 116] },
+  { label: "Noé – Corde à sauter",   color: "#1d4e89", data: [102, 186, 106, 198, 112, 112] },
+  { label: "Noé – Burpees",          color: "#9b5de5", data: [118, 170, 110, 174,  96,  96] },
+];
+
+const CODE = "10VP4";
+
+/* ─── Création du graphique ─────────────────────────────────────── */
+const ctx = document.getElementById('mainChart').getContext('2d');
+
+const chartDatasets = SERIES.map(s => ({
+  label: s.label,
+  data: [...s.data],
+  borderColor: s.color,
+  backgroundColor: s.color + '18',
+  borderWidth: 2.5,
+  pointBackgroundColor: s.color,
+  pointRadius: 5,
+  pointHoverRadius: 7,
+  tension: 0.35,
+  fill: false,
+}));
+
+const myChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: LABELS,
+    datasets: chartDatasets,
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false }, // légende custom en HTML
+      tooltip: {
+        backgroundColor: '#1a1815',
+        titleColor: '#ffffff',
+        bodyColor: 'rgba(255,255,255,.75)',
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} BPM`,
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: '#e8e4dc' },
+        ticks: {
+          font: { family: "'DM Sans', sans-serif", size: 11 },
+          color: '#6b6560',
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Fréquence cardiaque (BPM)',
+          font: { family: "'DM Sans', sans-serif", size: 12, weight: '600' },
+          color: '#6b6560',
+          padding: { bottom: 8 }
+        },
+        min: 60,
+        grid: { color: '#e8e4dc' },
+        ticks: {
+          font: { family: "'DM Sans', sans-serif", size: 11 },
+          color: '#6b6560',
+          callback: v => v + ' BPM',
+        }
+      }
+    }
+  }
+});
+
+/* ─── Construction du tableau de données (visible) ──────────────── */
+function buildDataTable() {
+  const dataBody = document.getElementById('dataBody');
+  dataBody.innerHTML = '';
+
+  SERIES.forEach((s, si) => {
+    const max = Math.max(...s.data);
+    const tr = document.createElement('tr');
+
+    const tdLabel = document.createElement('td');
+    tdLabel.style.color = s.color;
+    tdLabel.textContent = s.label;
+    tr.appendChild(tdLabel);
+
+    s.data.forEach(val => {
+      const td = document.createElement('td');
+      td.textContent = val + ' BPM';
+      if (val === max) td.classList.add('cell-high');
+      tr.appendChild(td);
+    });
+
+    dataBody.appendChild(tr);
+  });
+}
+
+buildDataTable();
+
+/* ─── Construction du tableau d'édition ─────────────────────────── */
+const editBody = document.getElementById('editBody');
+
+SERIES.forEach((s, si) => {
+  const tr = document.createElement('tr');
+  const tdLabel = document.createElement('td');
+  tdLabel.className = 'row-label';
+  tdLabel.style.color = s.color;
+  tdLabel.style.fontWeight = '600';
+  tdLabel.textContent = s.label;
+  tr.appendChild(tdLabel);
+
+  s.data.forEach((val, vi) => {
+    const td = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = 40;
+    input.max = 250;
+    input.value = val;
+    input.id = `inp_${si}_${vi}`;
+    td.appendChild(input);
+    tr.appendChild(td);
+  });
+
+  editBody.appendChild(tr);
+});
+
+/* ─── Mise à jour du graphique ──────────────────────────────────── */
+document.getElementById('btnUpdate').addEventListener('click', () => {
+  SERIES.forEach((s, si) => {
+    s.data.forEach((_, vi) => {
+      const inp = document.getElementById(`inp_${si}_${vi}`);
+      const val = parseFloat(inp.value);
+      if (!isNaN(val)) myChart.data.datasets[si].data[vi] = val;
+    });
+  });
+  myChart.update();
+  buildDataTable(); // met à jour le tableau visible aussi
+});
+
+/* ─── Modal mot de passe ────────────────────────────────────────── */
+const overlay  = document.getElementById('modalOverlay');
+const pwdInput = document.getElementById('pwdInput');
+const modalErr = document.getElementById('modalError');
+const editZone = document.getElementById('editZone');
+
+document.getElementById('btnTeacher').addEventListener('click', () => {
+  pwdInput.value = '';
+  modalErr.textContent = '';
+  overlay.classList.add('open');
+  setTimeout(() => pwdInput.focus(), 100);
+});
+
+document.getElementById('btnCancel').addEventListener('click', closeModal);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+document.getElementById('btnConfirm').addEventListener('click', checkCode);
+pwdInput.addEventListener('keydown', e => { if (e.key === 'Enter') checkCode(); });
+
+function checkCode() {
+  if (pwdInput.value === CODE) {
+    closeModal();
+    editZone.classList.add('active');
+  } else {
+    modalErr.textContent = 'Code incorrect. Réessayez.';
+    pwdInput.value = '';
+    pwdInput.focus();
+  }
+}
+
+function closeModal() {
+  overlay.classList.remove('open');
+}
+</script>
+</body>
+</html>
